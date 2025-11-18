@@ -5,6 +5,7 @@ import store from './store'
 import ElementUI from 'element-ui';
 import 'element-ui/lib/theme-chalk/index.css';
 import './assets/gloable.css'
+import './assets/green-theme.css'  // 引入清新绿主题
 import request from "@/utils/request";
 
 Vue.config.productionTip = false

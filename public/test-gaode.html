@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高德地图测试页面</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        h1 {
+            color: #333;
+        }
+        .info {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 8px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        #container {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #4caf50;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>🗺️ 高德地图测试页面</h1>
+    
+    <div id="status" class="info">
+        <strong>状态：</strong><span id="statusText">准备测试...</span>
+    </div>
+    
+    <div class="info">
+        <strong>JavaScript API Key：</strong>a0dc4534ab26be714e94cef345e480aa<br>
+        <strong>Web服务API Key：</strong>ad1347855b35e84080018cf5c811d3e7
+    </div>
+    
+    <div>
+        <button onclick="testJSKey()">测试JavaScript API Key</button>
+        <button onclick="testWebKey()">测试Web服务Key</button>
+        <button onclick="testNetwork()">测试网络连通性</button>
+    </div>
+    
+    <div id="container"></div>
+    
+    <div id="logs" style="margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px; max-height: 300px; overflow-y: auto;">
+        <strong>日志：</strong>
+        <pre id="logContent" style="margin: 10px 0; white-space: pre-wrap;"></pre>
+    </div>
+
+    <script>
+        function log(message) {
+            const logContent = document.getElementById('logContent');
+            const timestamp = new Date().toLocaleTimeString();
+            logContent.textContent += `[${timestamp}] ${message}\n`;
+            console.log(message);
+        }
+        
+        function updateStatus(text, isSuccess) {
+            const statusDiv = document.getElementById('status');
+            const statusText = document.getElementById('statusText');
+            statusText.textContent = text;
+            statusDiv.className = 'info ' + (isSuccess ? 'success' : 'error');
+        }
+        
+        function testJSKey() {
+            log('开始测试JavaScript API Key...');
+            updateStatus('加载中...', false);
+            
+            const jsKey = 'a0dc4534ab26be714e94cef345e480aa';
+            const script = document.createElement('script');
+            script.src = `https://webapi.amap.com/maps?v=2.0&key=${jsKey}&plugin=AMap.Geolocation,AMap.ToolBar`;
+            
+            script.onload = function() {
+                log('✅ JavaScript API SDK加载成功');
+                log('✅ API Key有效');
+                
+                try {
+                    const map = new AMap.Map('container', {
+                        viewMode: '3D',
+                        pitch: 65,
+                        zoom: 15,
+                        center: [110.479, 29.117],
+                        showBuildingBlock: true
+                    });
+                    
+                    map.addLayer(new AMap.TileLayer.Satellite());
+                    map.addLayer(new AMap.TileLayer.RoadNet());
+                    
+                    log('✅ 3D卫星地图创建成功');
+                    updateStatus('✅ JavaScript API Key测试成功！地图已加载', true);
+                } catch (error) {
+                    log('❌ 地图创建失败: ' + error.message);
+                    updateStatus('❌ 地图创建失败', false);
+                }
+            };
+            
+            script.onerror = function(error) {
+                log('❌ SDK加载失败：网络超时或Key无效');
+                updateStatus('❌ JavaScript API Key测试失败', false);
+            };
+            
+            document.head.appendChild(script);
+        }
+        
+        function testWebKey() {
+            log('开始测试Web服务API Key...');
+            updateStatus('测试中...', false);
+            
+            const webKey = 'ad1347855b35e84080018cf5c811d3e7';
+            const testUrl = `https://restapi.amap.com/v3/weather/weatherInfo?city=430800&key=${webKey}&extensions=base`;
+            
+            log('📡 调用URL: ' + testUrl);
+            
+            fetch(testUrl)
+                .then(response => response.json())
+                .then(data => {
+                    log('📡 API响应: ' + JSON.stringify(data));
+                    if (data.status === '1') {
+                        log('✅ Web服务API Key有效');
+                        updateStatus('✅ Web服务API Key测试成功', true);
+                    } else {
+                        log('❌ API返回错误: ' + data.info);
+                        updateStatus('❌ Web服务API Key无效', false);
+                    }
+                })
+                .catch(error => {
+                    log('❌ 网络请求失败: ' + error.message);
+                    updateStatus('❌ 无法访问高德REST API服务器', false);
+                });
+        }
+        
+        function testNetwork() {
+            log('开始测试网络连通性...');
+            updateStatus('测试中...', false);
+            
+            const testUrls = [
+                'https://a.amap.com',
+                'https://webapi.amap.com',
+                'https://restapi.amap.com',
+                'https://vdata.amap.com'
+            ];
+            
+            let successCount = 0;
+            let testCount = 0;
+            
+            testUrls.forEach(url => {
+                fetch(url, { mode: 'no-cors' })
+                    .then(() => {
+                        log('✅ 可以访问: ' + url);
+                        successCount++;
+                    })
+                    .catch(error => {
+                        log('❌ 无法访问: ' + url + ' - ' + error.message);
+                    })
+                    .finally(() => {
+                        testCount++;
+                        if (testCount === testUrls.length) {
+                            if (successCount === testUrls.length) {
+                                updateStatus('✅ 网络连通正常，所有高德服务器均可访问', true);
+                            } else if (successCount > 0) {
+                                updateStatus(`⚠️ 部分服务器可访问 (${successCount}/${testUrls.length})`, false);
+                            } else {
+                                updateStatus('❌ 无法访问任何高德服务器，请检查网络设置', false);
+                            }
+                        }
+                    });
+            });
+        }
+        
+        log('页面加载完成，请点击按钮测试');
+        log('提示：如果所有测试都失败，说明网络无法访问高德服务器');
+        log('解决方法：更换网络、使用VPN或使用替代地图方案');
+    </script>
+</body>
+</html>
+

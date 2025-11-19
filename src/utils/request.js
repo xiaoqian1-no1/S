@@ -11,8 +11,17 @@ const request = axios.create({
 // 比如统一加token，对请求参数统一加密
 request.interceptors.request.use(config => {
     config.headers['Content-Type'] = 'application/json;charset=utf-8';
-    let user = localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")) : null
-    if (user) {
+    let user = null;
+    try {
+        const userStr = localStorage.getItem("user");
+        user = userStr ? JSON.parse(userStr) : null;
+    } catch (e) {
+        console.error('解析用户信息失败:', e);
+        localStorage.removeItem("user"); // 清除损坏的数据
+        user = null;
+    }
+    
+    if (user && user.token) {
         config.headers['token'] = user.token;  // 设置请求头
     }
 
@@ -36,17 +45,46 @@ request.interceptors.response.use(
         }
         // 当权限验证不通过的时候给出提示
         if (res.code === '401') {
-            // ElementUI.Message({
-            //     message: res.msg,
-            //     type: 'error'
-            // });
-            router.push("/login")
+            console.warn('Token验证失败，跳转到登录页');
+            // 清除无效的用户信息
+            localStorage.removeItem("user");
+            localStorage.removeItem("menus");
+            router.push("/login");
         }
         return res;
     },
     error => {
-        console.log('err' + error) // for debug
-        return Promise.reject(error)
+        console.error('请求错误:', error);
+        
+        // 网络错误处理
+        if (!error.response) {
+            console.error('网络连接失败');
+            return Promise.reject(new Error('网络连接失败，请检查网络设置'));
+        }
+        
+        // HTTP状态码错误处理
+        const status = error.response.status;
+        switch (status) {
+            case 401:
+                console.warn('未授权访问，跳转到登录页');
+                localStorage.removeItem("user");
+                localStorage.removeItem("menus");
+                router.push("/login");
+                break;
+            case 403:
+                console.warn('权限不足');
+                break;
+            case 404:
+                console.warn('请求的资源不存在');
+                break;
+            case 500:
+                console.error('服务器内部错误');
+                break;
+            default:
+                console.error(`请求失败，状态码: ${status}`);
+        }
+        
+        return Promise.reject(error);
     }
 )
 

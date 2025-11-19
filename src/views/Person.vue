@@ -7,7 +7,7 @@
           :show-file-list="false"
           :on-success="handleAvatarSuccess"
       >
-        <img v-if="form.avatarUrl" :src="assets/logo.png" class="avatar">
+        <img v-if="form.avatarUrl" :src="form.avatarUrl" class="avatar">
         <i v-else class="el-icon-plus avatar-uploader-icon"></i>
       </el-upload>
 
@@ -37,9 +37,18 @@
 export default {
   name: "Person",
   data() {
+    let user = {};
+    try {
+      const userStr = localStorage.getItem("user");
+      user = userStr ? JSON.parse(userStr) : {};
+    } catch (e) {
+      console.error('解析用户信息失败:', e);
+      user = {};
+    }
+    
     return {
       form: {},
-      user: localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")) : {}
+      user: user
     }
   },
   created() {

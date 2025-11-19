@@ -141,7 +141,7 @@ export default {
       }
       
       const script = document.createElement('script');
-      script.src = `https://webapi.amap.com/maps?v=2.0&key=${this.amapKey}&plugin=AMap.Marker,AMap.InfoWindow,AMap.ToolBar`;
+      script.src = `https://webapi.amap.com/maps?v=2.0&key=${this.amapKey}&plugin=AMap.Marker,AMap.InfoWindow,AMap.ToolBar,AMap.Polygon`;
       
       script.onload = () => {
         console.log('✅ 高德地图SDK加载成功');
@@ -235,28 +235,63 @@ export default {
     renderFarmMarkers() {
       if (!this.map || !window.AMap || this.allFarms.length === 0) return;
       
-      // 清除现有标记
-      this.farmMarkers.forEach(marker => marker.setMap(null));
+      // 清除现有标记和多边形
+      this.farmMarkers.forEach(item => {
+        if (item.marker) item.marker.setMap(null);
+        if (item.polygon) item.polygon.setMap(null);
+      });
       this.farmMarkers = [];
       
       const baseCenter = this.map.getCenter();
+      let hasRealLocation = false;
       
       this.allFarms.forEach((farm, index) => {
-        // 使用黄金角分布算法分布农场标记
-        const angle = (index * 137.5) * Math.PI / 180;
-        const distance = 0.008 + (index % 8) * 0.004;
+        let position;
+        let polygon = null;
         
-        const position = [
-          baseCenter.lng + Math.cos(angle) * distance,
-          baseCenter.lat + Math.sin(angle) * distance
-        ];
+        // 优先使用真实坐标
+        if (farm.centerLng && farm.centerLat) {
+          position = [farm.centerLng, farm.centerLat];
+          hasRealLocation = true;
+          
+          // 如果有区域数据，绘制多边形
+          if (farm.coordinates) {
+            try {
+              const coords = JSON.parse(farm.coordinates);
+              const path = coords.map(c => [c.lng, c.lat]);
+              
+              polygon = new window.AMap.Polygon({
+                path: path,
+                strokeColor: '#4CAF50',
+                strokeWeight: 3,
+                strokeOpacity: 0.8,
+                fillColor: '#4CAF50',
+                fillOpacity: 0.3,
+                zIndex: 50
+              });
+              
+              polygon.setMap(this.map);
+            } catch (e) {
+              console.error('解析农场区域坐标失败:', e);
+            }
+          }
+        } else {
+          // 使用黄金角分布算法分布农场标记（模拟位置）
+          const angle = (index * 137.5) * Math.PI / 180;
+          const distance = 0.008 + (index % 8) * 0.004;
+          
+          position = [
+            baseCenter.lng + Math.cos(angle) * distance,
+            baseCenter.lat + Math.sin(angle) * distance
+          ];
+        }
         
         // 创建标记
         const marker = new window.AMap.Marker({
           position: position,
           title: farm.farm,
           label: {
-            content: `<div style="background: #4caf50; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.3); white-space: nowrap;">${farm.farm}</div>`,
+            content: `<div style="background: ${farm.centerLng ? '#4caf50' : '#ff9800'}; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.3); white-space: nowrap;">${farm.farm}${farm.centerLng ? '' : '(模拟)'}</div>`,
             direction: 'top',
             offset: new window.AMap.Pixel(0, -10)
           }
@@ -275,10 +310,14 @@ export default {
           this.selectedFarm = farm;
         });
         
-        this.farmMarkers.push(marker);
+        this.farmMarkers.push({ marker, polygon });
       });
       
       console.log('✅ 渲染了', this.farmMarkers.length, '个农场标记');
+      
+      if (hasRealLocation) {
+        this.$message.success('已加载农场真实位置和区域');
+      }
     },
     
     // 创建信息窗口内容
@@ -320,7 +359,8 @@ export default {
       this.selectedFarm = farm;
       
       // 找到对应的标记
-      const marker = this.farmMarkers.find(m => m.getTitle() === farm.farm);
+      const markerItem = this.farmMarkers.find(m => m.marker && m.marker.getTitle() === farm.farm);
+      const marker = markerItem ? markerItem.marker : null;
       
       if (marker) {
         const position = marker.getPosition();

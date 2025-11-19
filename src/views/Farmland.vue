@@ -80,6 +80,23 @@
         <el-form-item label="农田负责人">
           <el-input v-model="form.keeper" autocomplete="off"></el-input>
         </el-form-item>
+        
+        <el-form-item label="地理位置">
+          <el-button 
+            type="success" 
+            icon="el-icon-location" 
+            @click="openLocationSelector"
+            size="small"
+          >
+            {{ form.centerLng ? '重新选择位置' : '在地图上选择位置' }}
+          </el-button>
+          <el-tag v-if="form.centerLng" type="success" size="small" style="margin-left: 10px;">
+            <i class="el-icon-check"></i> 已设置地理位置
+          </el-tag>
+          <el-tag v-if="form.coordinates" type="info" size="small" style="margin-left: 5px;">
+            <i class="el-icon-map-location"></i> 已绘制区域
+          </el-tag>
+        </el-form-item>
 
       </el-form>
       <div slot="footer" class="dialog-footer">
@@ -87,12 +104,24 @@
         <el-button type="primary" @click="save">确 定</el-button>
       </div>
     </el-dialog>
+
+    <!-- 地图选择器 -->
+    <farm-location-selector
+      :visible.sync="locationSelectorVisible"
+      :initial-data="form"
+      @confirm="handleLocationConfirm"
+    />
   </div>
 </template>
 
 <script>
+import FarmLocationSelector from '@/components/FarmLocationSelector.vue'
+
 export default {
   name: "Farmland",
+  components: {
+    FarmLocationSelector
+  },
   data() {
     return {
       tableData: [],
@@ -102,6 +131,7 @@ export default {
       farm: "",
       form: {},
       dialogFormVisible: false,
+      locationSelectorVisible: false,
       multipleSelection: [],
       user: localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")) : {}
     }
@@ -207,6 +237,15 @@ export default {
     handleExcelImportSuccess() {
       this.$message.success("导入成功")
       this.load()
+    },
+    openLocationSelector() {
+      this.locationSelectorVisible = true
+    },
+    handleLocationConfirm(locationData) {
+      this.form.centerLng = locationData.centerLng
+      this.form.centerLat = locationData.centerLat
+      this.form.coordinates = locationData.coordinates
+      this.$message.success('地理位置设置成功')
     }
 
   }

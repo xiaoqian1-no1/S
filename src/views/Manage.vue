@@ -56,7 +56,16 @@ export default {
       }
     },
     getUser() {
-      let username = localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")).username : ""
+      let username = "";
+      try {
+        const userStr = localStorage.getItem("user");
+        const user = userStr ? JSON.parse(userStr) : null;
+        username = user ? user.username : "";
+      } catch (e) {
+        console.error('解析用户信息失败:', e);
+        username = "";
+      }
+      
       if (username) {
         // 从后台获取User数据
         this.request.get("/user/username/" + username).then(res => {

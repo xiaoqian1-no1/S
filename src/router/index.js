@@ -45,7 +45,7 @@ export const resetRouter = () => {
   router.matcher = new VueRouter({
     mode: 'history',
     routes
-  })
+  }).matcher
 }
 
 // 注意：刷新页面会导致页面路由重置
@@ -57,7 +57,15 @@ export const setRoutes = () => {
         { path: 'person', name: '个人信息', component: () => import('../views/Person.vue')},
         { path: 'password', name: '修改密码', component: () => import('../views/Password.vue')},
       ] }
-    const menus = JSON.parse(storeMenus)
+    
+    let menus = [];
+    try {
+      menus = JSON.parse(storeMenus);
+    } catch (e) {
+      console.error('解析菜单数据失败:', e);
+      localStorage.removeItem("menus");
+      return;
+    }
     menus.forEach(item => {
       if (item.path) {  // 当且仅当path不为空的时候才去设置路由
         let itemMenu = { path: item.path.replace("/", ""), name: item.name, component: () => import('../views/' + item.pagePath + '.vue')}
